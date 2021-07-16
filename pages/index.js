@@ -23,6 +23,28 @@ function ProfileSidebar(props) {
   )
 }
 
+function ProfileRelationsBox(props) {
+  return (
+    <ProfileRelationsBoxWrapper>
+      <h2 className="smallTitle">
+        {props.title} ({props.items.length})
+      </h2>
+      <ul>
+        {props.items.map((itemAtual) => {
+          return (
+            <li key={itemAtual.id}>
+              <a href={itemAtual.avatar_url}>
+                <img src={itemAtual.avatar_url} />
+                <span>{itemAtual.login}</span>
+              </a>
+            </li>
+          )
+        })}
+      </ul>
+    </ProfileRelationsBoxWrapper>
+  )
+}
+
 
 export default function Home() {
   const usuarioAleatorio = 'robertameireles';
@@ -40,6 +62,23 @@ export default function Home() {
     'gustavoguanabara',
     'MarAzevedoRocha'
   ]
+
+  const [seguidores, setSeguidores] = React.useState([]);
+  // 0 - Pegar o array de dados do github 
+  React.useEffect(function() {
+    fetch('https://api.github.com/users/robertameireles/followers')
+    .then(function (respostaDoServidor) {
+      return respostaDoServidor.json();
+    })
+    .then(function(respostaCompleta) {
+      setSeguidores(respostaCompleta);
+    })
+  }, [])
+
+  console.log('seguidores antes do return', seguidores);
+
+  // 1 - Criar um box que vai ter um map, baseado nos items do array
+  // que pegamos do GitHub
 
   return (
       <>
@@ -131,6 +170,7 @@ export default function Home() {
                 })}
               </ul>
             </ProfileRelationsBoxWrapper>
+            <ProfileRelationsBox title="Seguidores" items={seguidores}></ProfileRelationsBox>
           </div>
         </MainGrid>
       </>
