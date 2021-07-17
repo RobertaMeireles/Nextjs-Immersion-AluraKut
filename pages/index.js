@@ -1,10 +1,13 @@
 import React from 'react'
+import nookies from 'nookies'; // lib para criar o cookie
+import jwt from 'jsonwebtoken'; // lib para decodificar o token
 import MainGrid from '../src/components/MainGrid'
 import Box from '../src/components/Box'
 import { AlurakutMenu, OrkutNostalgicIconSet, AlurakutProfileSidebarMenuDefault } from '../src/lib/AlurakutCommons';
 import { ProfileRelationsBoxWrapper} from '../src/components/ProfileRelations';
 
 
+// função para a sidebar
 function ProfileSidebar(props) {
   return (
     <Box as="aside">
@@ -23,6 +26,7 @@ function ProfileSidebar(props) {
   )
 }
 
+// COmponente que lista os seguidores
 function ProfileRelationsBox(props) {
   return (
     <ProfileRelationsBoxWrapper>
@@ -46,8 +50,10 @@ function ProfileRelationsBox(props) {
 }
 
 
-export default function Home() {
-  const usuarioAleatorio = 'robertameireles';
+export default function Home(props) {
+
+  // variaveis
+  const usuarioAleatorio = props.githubUser;
   const [comunidades, setComunidades] = React.useState([]);
 
   const pessoasFavoritas = [
@@ -60,9 +66,12 @@ export default function Home() {
   ]
 
   const [seguidores, setSeguidores] = React.useState([]);
-  // GET Seguidores github 
+  console.log('seguidores:', seguidores);
+  
+
+  // GET Seguidores github (useEffect)
   React.useEffect(function() {
-    fetch('https://api.github.com/users/robertameireles/followers')
+    fetch(`https://api.github.com/users/${props.githubUser}/followers`)
     .then(function (respostaDoServidor) {
       return respostaDoServidor.json();
     })
@@ -70,7 +79,8 @@ export default function Home() {
       setSeguidores(respostaCompleta);
     })
 
-    // API GraphQL
+
+    // API GraphQL para cadastrar comunidade através do formulário
     fetch('https://graphql.datocms.com/', {
       method: 'POST',
       headers: {
@@ -98,14 +108,12 @@ export default function Home() {
     // })
   }, [])
 
-  console.log('seguidores antes do return', seguidores);
-
-  // 1 - Criar um box que vai ter um map, baseado nos items do array
-  // que pegamos do GitHub
 
   return (
       <>
         <AlurakutMenu />
+
+        {/* Bem-Vindo */}
         <MainGrid>
           <div className="profileArea" style={{ gridArea: 'profileArea' }}>
             <ProfileSidebar githubUser={usuarioAleatorio} />
@@ -113,12 +121,13 @@ export default function Home() {
           <div className="welcomeArea" style={{ gridArea: 'welcomeArea' }}>
             <Box>
               <h1 className="title">
-                Bem vindo(a) 
+                Bem-vindo(a) 
               </h1>
   
               <OrkutNostalgicIconSet />
             </Box>
   
+            {/* formulário cadastrar comunidades */}
             <Box>
               <h2 className="subTitle">O que você deseja fazer?</h2>
               <form onSubmit={function handleCriaComunidade(e) {
@@ -170,6 +179,8 @@ export default function Home() {
               </form>
             </Box>
           </div>
+
+          {/* Listar comunidades cadastradas */}
           <div className="profileRelationsArea" style={{ gridArea: 'profileRelationsArea' }}>
             <ProfileRelationsBoxWrapper>
               <h2 className="smallTitle">
@@ -188,6 +199,8 @@ export default function Home() {
                 })}
               </ul>
             </ProfileRelationsBoxWrapper>
+
+            {/* Listar pessoas da comunidade */}
             <ProfileRelationsBoxWrapper>
               <h2 className="smallTitle">
                 Pessoas da comunidade ({pessoasFavoritas.length})
@@ -205,9 +218,43 @@ export default function Home() {
                 })}
               </ul>
             </ProfileRelationsBoxWrapper>
+
+            {/* Listar seguidores */}
             <ProfileRelationsBox title="Seguidores" items={seguidores}></ProfileRelationsBox>
           </div>
         </MainGrid>
       </>
     )
   }
+
+  
+// informações do servidor que estão sendo enviadas para a página home (pages/login populou o cookie
+//utilizando a lib nookies).
+export async function getServerSideProps(context) {
+  const cookies = nookies.get(context) 
+  const token = cookies.USER_TOKEN; // pegar do cookie o token
+  // 
+  const { isAuthenticated } = await fetch('https://alurakut.vercel.app/api/auth', {
+    headers: {
+        Authorization: token
+      }
+  })
+  .then((resposta) => resposta.json())
+
+  // redirect do next para caso a pessoa não esteja autenticado, não exista no cadastro da api
+  if(!isAuthenticated) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      }
+    }
+  }
+
+  const { githubUser } = jwt.decode(token); // decodificar o token usando a lib jwt
+  return {
+    props: {
+      githubUser
+    }, // will be passed to the page component as props
+  }
+} 
